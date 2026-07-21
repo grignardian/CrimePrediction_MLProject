@@ -2,7 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import streamlit as st
 
 # 1. Load the datasets
@@ -309,25 +310,38 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 print("Training rows:", len(X_train))
 print("Testing rows:", len(X_test))
 
-# 5. Train Random Forest model
+# 5. Train models
+# Random Forest model
 model = RandomForestRegressor(n_estimators=100, random_state=42)
 model.fit(X_train, y_train)
-print("Model trained successfully!")
+print("Random Forest model trained successfully!")
 
-# Make predictions and evaluate
+# Multiple Linear Regression model
+mlr_model = LinearRegression()
+mlr_model.fit(X_train, y_train)
+print("Multiple Linear Regression model trained successfully!")
+
+# Make predictions and evaluate Random Forest
 predictions = model.predict(X_test)
-print("Predicted Crime Counts:")
-print(predictions[:10])
-
-print("\nActual Crime Counts:")
-print(y_test.values[:10])
-
 mae = mean_absolute_error(y_test, predictions)
 r2 = r2_score(y_test, predictions)
 
-print("\n===== MODEL PERFORMANCE =====")
+# Make predictions and evaluate MLR
+mlr_predictions = mlr_model.predict(X_test)
+mlr_mae = mean_absolute_error(y_test, mlr_predictions)
+mlr_mse = mean_squared_error(y_test, mlr_predictions)
+mlr_r2 = r2_score(y_test, mlr_predictions)
+
+print("\n===== RANDOM FOREST PERFORMANCE =====")
 print("Mean Absolute Error (MAE):", mae)
 print("R² Score:", r2)
+
+print("\n===== MULTIPLE LINEAR REGRESSION PERFORMANCE =====")
+print("Mean Absolute Error (MAE):", mlr_mae)
+print("Mean Squared Error (MSE):", mlr_mse)
+print("R² Score (R^2):", mlr_r2)
+print("Coefficients:", mlr_model.coef_)
+print("Intercept:", mlr_model.intercept_)
 
 # Print feature importances
 importance = model.feature_importances_
@@ -349,14 +363,13 @@ else:
 # Show comparison table of actual vs predicted
 comparison = pd.DataFrame({
     "Actual": y_test.values,
-    "Predicted": predictions.astype(int)
+    "RF Predicted": predictions.astype(int),
+    "MLR Predicted": mlr_predictions.astype(int)
 })
 print(comparison.head(10))
 
 # 6. Streamlit User Interface
 st.set_page_config(page_title="Crime Prediction System", page_icon="📊", layout="wide")
-
-# Sidebar for inputs
 st.sidebar.header("🔮 Inference Parameters")
 st.sidebar.write("Input demographic values using the - / + buttons below:")
 
@@ -366,10 +379,14 @@ sex_ratio = st.sidebar.number_input("Sex Ratio (Females per 1000 Males)", min_va
 literacy = st.sidebar.number_input("Literacy Rate (%)", min_value=30.0, max_value=100.0, value=75.0, step=0.5)
 
 st.sidebar.markdown("---")
+st.sidebar.subheader("🤖 Model Selection")
+selected_model_name = st.sidebar.selectbox("Select Prediction Model:", ["Random Forest", "Multiple Linear Regression"])
+
+st.sidebar.markdown("---")
 st.sidebar.subheader("About the Project")
 st.sidebar.info(
-    "This system uses a Random Forest Regressor trained on 2011 India Census data "
-    "and NCRB statistics (618 merged districts) to predict total cognizable IPC crimes."
+    "This system compares a Random Forest Regressor and a Multiple Linear Regression (MLR) model "
+    "trained on 2011 India Census data and NCRB crime statistics (618 merged districts)."
 )
 
 st.title("📊 District Crime Prediction System")
@@ -388,27 +405,48 @@ with tab1:
     col_v3.metric("Sex Ratio", f"{sex_ratio}")
     col_v4.metric("Literacy", f"{literacy}%")
     
+    st.write(f"Active Prediction Model: **{selected_model_name}**")
     if st.button("Predict"):
         input_df = pd.DataFrame([[population, growth, sex_ratio, literacy]], 
                                 columns=["Population", "Growth", "Sex-Ratio", "Literacy"])
-        prediction = model.predict(input_df)[0]
-        st.metric(label="Predicted Total IPC Crimes", value=f"{int(prediction):,}")
+        if selected_model_name == "Random Forest":
+            prediction = model.predict(input_df)[0]
+        else:
+            prediction = mlr_model.predict(input_df)[0]
+        st.metric(label=f"Predicted Total IPC Crimes ({selected_model_name})", value=f"{int(prediction):,}")
 
 with tab2:
-    st.header("Random Forest Regressor Performance")
-    col_m1, col_m2 = st.columns(2)
-    col_m1.metric(label="Model R² Score", value=f"{r2:.4f}")
-    col_m2.metric(label="Mean Absolute Error (MAE)", value=f"{int(mae):,}")
+    st.header("Model Performance & Comparison")
     
-    st.subheader("Demographic Feature Influence")
-    st.write("This bar chart displays the relative importance of each feature in the trained Random Forest model:")
+    col_rf, col_mlr = st.columns(2)
     
-    feat_importance = pd.DataFrame({
-        'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
-        'Importance': model.feature_importances_
-    })
-    st.bar_chart(feat_importance.set_index('Feature'))
-
+    with col_rf:
+        st.subheader("🌲 Random Forest Regressor")
+        st.metric(label="R² Score", value=f"{r2:.4f}")
+        st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mae):,}")
+        
+        st.write("**Feature Importances:**")
+        feat_importance = pd.DataFrame({
+            'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
+            'Importance': model.feature_importances_
+        })
+        st.dataframe(feat_importance.set_index('Feature'))
+        
+    with col_mlr:
+        st.subheader("📈 Multiple Linear Regression")
+        st.metric(label="R² Score", value=f"{mlr_r2:.4f}")
+        st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mlr_mae):,}")
+        st.metric(label="Mean Squared Error (MSE)", value=f"{int(mlr_mse):,}")
+        
+        st.write("**Coefficients:**")
+        coef_df = pd.DataFrame({
+            'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
+            'Coefficient': mlr_model.coef_
+        })
+        st.dataframe(coef_df.set_index('Feature'))
+        st.write(f"Intercept: **{mlr_model.intercept_:.2f}**")
+        
+    st.markdown("---")
     st.subheader("Demographic Trends vs Crimes")
     st.write("Explore how different census factors relate to total cognizable crimes across all 618 merged districts:")
     chart_feature = st.selectbox("Select Demographic Variable to Plot:", ["Population", "Growth", "Sex-Ratio", "Literacy"])
