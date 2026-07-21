@@ -412,7 +412,8 @@ with tab2:
     st.subheader("Demographic Trends vs Crimes")
     st.write("Explore how different census factors relate to total cognizable crimes across all 618 merged districts:")
     chart_feature = st.selectbox("Select Demographic Variable to Plot:", ["Population", "Growth", "Sex-Ratio", "Literacy"])
-    st.scatter_chart(data=merged, x=chart_feature, y="Total Cog. Crime Under IPC")
+    chart_data = merged[[chart_feature, "Total Cog. Crime Under IPC"]]
+    st.scatter_chart(data=chart_data, x=chart_feature, y="Total Cog. Crime Under IPC")
 
 with tab3:
     st.header("Data Overview & Filter")
