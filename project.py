@@ -454,8 +454,13 @@ with tab2:
     st.subheader("Demographic Trends vs Crimes")
     st.write("Explore how different census factors relate to total cognizable crimes across all 618 merged districts:")
     chart_feature = st.selectbox("Select Demographic Variable to Plot:", ["Population", "Growth", "Sex-Ratio", "Literacy"])
-    chart_data = merged[[chart_feature, "Total Cog. Crime Under IPC"]]
-    st.scatter_chart(data=chart_data, x=chart_feature, y="Total Cog. Crime Under IPC")
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.scatter(merged[chart_feature], merged["Total Cog. Crime Under IPC"], alpha=0.7, color="#1f77b4")
+    ax.set_title(f"{chart_feature} vs Total Crimes Across Districts", fontsize=12)
+    ax.set_xlabel(chart_feature, fontsize=10)
+    ax.set_ylabel("Total Cog. Crime Under IPC", fontsize=10)
+    ax.grid(True, linestyle="--", alpha=0.5)
+    st.pyplot(fig)
 
 with tab3:
     st.header("Data Overview & Filter")
