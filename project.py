@@ -380,6 +380,8 @@ if not st.session_state.proceeded:
     try:
         with open("README.md", "r", encoding="utf-8") as f:
             readme_text = f.read()
+        if "## Getting Started" in readme_text:
+            readme_text = readme_text.split("## Getting Started")[0].strip()
         st.markdown(readme_text)
     except Exception:
         st.title("Crime Prediction System")
