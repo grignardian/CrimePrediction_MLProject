@@ -324,6 +324,7 @@ print("Multiple Linear Regression model trained successfully!")
 # Make predictions and evaluate Random Forest
 predictions = model.predict(X_test)
 mae = mean_absolute_error(y_test, predictions)
+mse = mean_squared_error(y_test, predictions)
 r2 = r2_score(y_test, predictions)
 
 # Make predictions and evaluate MLR
@@ -334,6 +335,7 @@ mlr_r2 = r2_score(y_test, mlr_predictions)
 
 print("\n===== RANDOM FOREST PERFORMANCE =====")
 print("Mean Absolute Error (MAE):", mae)
+print("Mean Squared Error (MSE):", mse)
 print("R² Score:", r2)
 
 print("\n===== MULTIPLE LINEAR REGRESSION PERFORMANCE =====")
@@ -424,6 +426,8 @@ with tab2:
         st.subheader("🌲 Random Forest Regressor")
         st.metric(label="R² Score", value=f"{r2:.4f}")
         st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mae):,}")
+        st.metric(label="Mean Squared Error (MSE)", value=f"{int(mse):,}")
+        st.metric(label="Intercept", value="—")
         
         st.write("**Feature Importances:**")
         feat_importance = pd.DataFrame({
@@ -437,6 +441,7 @@ with tab2:
         st.metric(label="R² Score", value=f"{mlr_r2:.4f}")
         st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mlr_mae):,}")
         st.metric(label="Mean Squared Error (MSE)", value=f"{int(mlr_mse):,}")
+        st.metric(label="Intercept", value=f"{mlr_model.intercept_:.2f}")
         
         st.write("**Coefficients:**")
         coef_df = pd.DataFrame({
@@ -444,7 +449,6 @@ with tab2:
             'Coefficient': mlr_model.coef_
         })
         st.dataframe(coef_df.set_index('Feature'))
-        st.write(f"Intercept: **{mlr_model.intercept_:.2f}**")
         
     st.markdown("---")
     st.subheader("Demographic Trends vs Crimes")
