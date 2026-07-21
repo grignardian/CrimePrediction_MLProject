@@ -388,9 +388,38 @@ with tab2:
     })
     st.bar_chart(feat_importance.set_index('Feature'))
 
+    st.subheader("Demographic Trends vs Crimes")
+    st.write("Explore how different census factors relate to total cognizable crimes across all 618 merged districts:")
+    chart_feature = st.selectbox("Select Demographic Variable to Plot:", ["Population", "Growth", "Sex-Ratio", "Literacy"])
+    st.scatter_chart(data=merged, x=chart_feature, y="Total Cog. Crime Under IPC")
+
 with tab3:
-    st.header("Datasets Preview")
-    st.subheader("Census Dataset Sample")
-    st.dataframe(census.head(10))
-    st.subheader("Crime Dataset Sample")
-    st.dataframe(crime.head(10))
+    st.header("Data Overview & Filter")
+    
+    # State selection dropdown
+    unique_states = sorted(merged["State"].unique())
+    selected_state = st.selectbox("Select State to Filter Data:", unique_states)
+    
+    # Filter dataset for the selected state
+    state_df = merged[merged["State"] == selected_state]
+    
+    # Calculate summary metrics for the state
+    state_population = state_df["Population"].sum()
+    state_avg_literacy = state_df["Literacy"].mean()
+    state_total_crimes = state_df["Total Cog. Crime Under IPC"].sum()
+    
+    st.subheader(f"Summary Statistics for {selected_state}")
+    col_s1, col_s2, col_s3 = st.columns(3)
+    col_s1.metric(label="Total Population", value=f"{state_population:,}")
+    col_s2.metric(label="Average Literacy Rate", value=f"{state_avg_literacy:.2f}%")
+    col_s3.metric(label="Total IPC Crimes", value=f"{int(state_total_crimes):,}")
+    
+    st.subheader("District Records in Selected State")
+    st.dataframe(state_df[["District", "Population", "Growth", "Sex-Ratio", "Literacy", "Total Cog. Crime Under IPC"]])
+    
+    # Raw previews
+    st.subheader("Raw Datasets (Top 5 rows)")
+    st.write("Census Dataset Preview:")
+    st.dataframe(census.head())
+    st.write("Crime Dataset Preview:")
+    st.dataframe(crime.head())
