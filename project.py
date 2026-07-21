@@ -351,35 +351,46 @@ comparison = pd.DataFrame({
 print(comparison.head(10))
 
 # 6. Streamlit User Interface
-st.title("District Crime Prediction System")
-st.write("This application predicts the Total IPC Crimes in a district using its demographics.")
+st.set_page_config(page_title="Crime Prediction System", page_icon="📊", layout="centered")
 
-st.header("Predict Crimes for a District")
-st.write("Input demographic values below to get a prediction of the total cognizable crimes:")
+st.title("📊 District Crime Prediction System")
+st.write("Predict the total volume of cognizable crimes (IPC) using district census demographics.")
 
-col1, col2 = st.columns(2)
+tab1, tab2, tab3 = st.tabs(["🔮 Predict Crimes", "📈 Model Performance", "📁 Data Overview"])
 
-with col1:
-    population = st.number_input("Population", min_value=1000, max_value=15000000, value=500000, step=10000)
-    growth = st.number_input("Population Growth Rate (%)", min_value=-50.0, max_value=100.0, value=15.0, step=0.1)
+with tab1:
+    st.header("Predict Crimes for a District")
+    st.write("Adjust the sliders below to calculate the predicted crime volume:")
+    
+    population = st.slider("Population", min_value=1000, max_value=12000000, value=1000000, step=50000)
+    growth = st.slider("Population Growth Rate (%)", min_value=-20.0, max_value=60.0, value=15.0, step=0.5)
+    sex_ratio = st.slider("Sex Ratio (Females per 1000 Males)", min_value=700, max_value=1200, value=940, step=5)
+    literacy = st.slider("Literacy Rate (%)", min_value=30.0, max_value=100.0, value=75.0, step=0.5)
+    
+    if st.button("Predict"):
+        input_df = pd.DataFrame([[population, growth, sex_ratio, literacy]], 
+                                columns=["Population", "Growth", "Sex-Ratio", "Literacy"])
+        prediction = model.predict(input_df)[0]
+        st.metric(label="Predicted Total IPC Crimes", value=f"{int(prediction):,}")
 
-with col2:
-    sex_ratio = st.number_input("Sex Ratio (Females per 1000 Males)", min_value=500, max_value=1500, value=900, step=1)
-    literacy = st.number_input("Literacy Rate (%)", min_value=0.0, max_value=100.0, value=75.0, step=0.5)
+with tab2:
+    st.header("Random Forest Regressor Performance")
+    col_m1, col_m2 = st.columns(2)
+    col_m1.metric(label="Model R² Score", value=f"{r2:.4f}")
+    col_m2.metric(label="Mean Absolute Error (MAE)", value=f"{int(mae):,}")
+    
+    st.subheader("Demographic Feature Influence")
+    st.write("This bar chart displays the relative importance of each feature in the trained Random Forest model:")
+    
+    feat_importance = pd.DataFrame({
+        'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
+        'Importance': model.feature_importances_
+    })
+    st.bar_chart(feat_importance.set_index('Feature'))
 
-# Prediction execution on button click
-if st.button("Predict"):
-    input_df = pd.DataFrame([[population, growth, sex_ratio, literacy]], 
-                            columns=["Population", "Growth", "Sex-Ratio", "Literacy"])
-    prediction = model.predict(input_df)[0]
-    st.success(f"Predicted Total IPC Crimes: **{int(prediction)}**")
-
-# Section showing model feature importance
-st.subheader("Demographic Feature Influence")
-st.write("This bar chart displays the relative importance of each feature in the trained Random Forest model:")
-
-feat_importance = pd.DataFrame({
-    'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
-    'Importance': model.feature_importances_
-})
-st.bar_chart(feat_importance.set_index('Feature'))
+with tab3:
+    st.header("Datasets Preview")
+    st.subheader("Census Dataset Sample")
+    st.dataframe(census.head(10))
+    st.subheader("Crime Dataset Sample")
+    st.dataframe(crime.head(10))
