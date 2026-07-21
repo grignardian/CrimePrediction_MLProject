@@ -371,8 +371,8 @@ comparison = pd.DataFrame({
 print(comparison.head(10))
 
 # 6. Streamlit User Interface
-st.set_page_config(page_title="Crime Prediction System", page_icon="📊", layout="wide")
-st.sidebar.header("🔮 Inference Parameters")
+st.set_page_config(page_title="Crime Prediction System", layout="wide")
+st.sidebar.header("Inference Parameters")
 st.sidebar.write("Input demographic values using the - / + buttons below:")
 
 population = st.sidebar.number_input("Population", min_value=1000, max_value=15000000, value=1000000, step=50000)
@@ -381,7 +381,7 @@ sex_ratio = st.sidebar.number_input("Sex Ratio (Females per 1000 Males)", min_va
 literacy = st.sidebar.number_input("Literacy Rate (%)", min_value=30.0, max_value=100.0, value=75.0, step=0.5)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🤖 Model Selection")
+st.sidebar.subheader("Model Selection")
 selected_model_name = st.sidebar.selectbox("Select Prediction Model:", ["Random Forest", "Multiple Linear Regression"])
 
 st.sidebar.markdown("---")
@@ -391,10 +391,10 @@ st.sidebar.info(
     "trained on 2011 India Census data and NCRB crime statistics (618 merged districts)."
 )
 
-st.title("📊 District Crime Prediction System")
+st.title("District Crime Prediction System")
 st.write("Predict the total volume of cognizable crimes (IPC) using district census demographics.")
 
-tab1, tab2, tab3 = st.tabs(["🔮 Predict Crimes", "📈 Model Performance", "📁 Data Overview"])
+tab1, tab2, tab3 = st.tabs(["Predict Crimes", "Model Performance", "Data Overview"])
 
 with tab1:
     st.header("Predict Crimes for a District")
@@ -423,7 +423,7 @@ with tab2:
     col_rf, col_mlr = st.columns(2)
     
     with col_rf:
-        st.subheader("🌲 Random Forest Regressor")
+        st.subheader("Random Forest Regressor")
         st.metric(label="R² Score", value=f"{r2:.4f}")
         st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mae):,}")
         st.metric(label="Mean Squared Error (MSE)", value=f"{int(mse):,}")
@@ -437,7 +437,7 @@ with tab2:
         st.dataframe(feat_importance.set_index('Feature'))
         
     with col_mlr:
-        st.subheader("📈 Multiple Linear Regression")
+        st.subheader("Multiple Linear Regression")
         st.metric(label="R² Score", value=f"{mlr_r2:.4f}")
         st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mlr_mae):,}")
         st.metric(label="Mean Squared Error (MSE)", value=f"{int(mlr_mse):,}")
