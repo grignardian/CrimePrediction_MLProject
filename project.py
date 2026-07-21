@@ -341,7 +341,10 @@ plt.bar(X.columns, importance)
 plt.title("Feature Importance")
 plt.xlabel("Features")
 plt.ylabel("Importance")
-plt.show()
+if not st.runtime.exists():
+    plt.show()
+else:
+    plt.close()
 
 # Show comparison table of actual vs predicted
 comparison = pd.DataFrame({
