@@ -423,7 +423,7 @@ else:
 
     with tab1:
         st.header("Predict Crimes for a District")
-        st.write("Adjust the values in the sidebar to calculate the predicted crime volume:")
+        st.write("Open the sidebar and adjust the values to calculate the predicted crime volume:")
         
         st.write("### Selected Demographic Inputs:")
         col_v1, col_v2, col_v3, col_v4 = st.columns(4)
