@@ -372,123 +372,146 @@ print(comparison.head(10))
 
 # 6. Streamlit User Interface
 st.set_page_config(page_title="Crime Prediction System", layout="wide")
-st.sidebar.header("Inference Parameters")
-st.sidebar.write("Input demographic values using the - / + buttons below:")
 
-population = st.sidebar.number_input("Population", min_value=1000, max_value=15000000, value=1000000, step=50000)
-growth = st.sidebar.number_input("Population Growth Rate (%)", min_value=-20.0, max_value=60.0, value=15.0, step=0.5)
-sex_ratio = st.sidebar.number_input("Sex Ratio (Females per 1000 Males)", min_value=700, max_value=1200, value=940, step=5)
-literacy = st.sidebar.number_input("Literacy Rate (%)", min_value=30.0, max_value=100.0, value=75.0, step=0.5)
+if "proceeded" not in st.session_state:
+    st.session_state.proceeded = False
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("Model Selection")
-selected_model_name = st.sidebar.selectbox("Select Prediction Model:", ["Random Forest", "Multiple Linear Regression"])
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("About the Project")
-st.sidebar.info(
-    "This system compares a Random Forest Regression (RFR) and a Multiple Linear Regression (MLR) model "
-    "trained on 2011 India Census data and NCRB crime statistics (618 merged districts)."
-)
-
-st.title("District Crime Prediction System")
-st.write("Predict the total volume of cognizable crimes (IPC) using district census demographics.")
-
-tab1, tab2, tab3 = st.tabs(["Predict Crimes", "Model Performance", "Data Overview"])
-
-with tab1:
-    st.header("Predict Crimes for a District")
-    st.write("Adjust the values in the sidebar to calculate the predicted crime volume:")
+if not st.session_state.proceeded:
+    try:
+        with open("README.md", "r", encoding="utf-8") as f:
+            readme_text = f.read()
+        st.markdown(readme_text)
+    except Exception:
+        st.title("Crime Prediction System")
+        st.write("This is a college ML project that predicts total cognizable IPC crimes in India districts using census data.")
     
-    st.write("### Selected Demographic Inputs:")
-    col_v1, col_v2, col_v3, col_v4 = st.columns(4)
-    col_v1.metric("Population", f"{population:,}")
-    col_v2.metric("Growth Rate", f"{growth}%")
-    col_v3.metric("Sex Ratio", f"{sex_ratio}")
-    col_v4.metric("Literacy", f"{literacy}%")
-    
-    st.write(f"Active Prediction Model: **{selected_model_name}**")
-    if st.button("Predict"):
-        input_df = pd.DataFrame([[population, growth, sex_ratio, literacy]], 
-                                columns=["Population", "Growth", "Sex-Ratio", "Literacy"])
-        if selected_model_name == "Random Forest":
-            prediction = model.predict(input_df)[0]
-        else:
-            prediction = mlr_model.predict(input_df)[0]
-        st.metric(label=f"Predicted Total IPC Crimes ({selected_model_name})", value=f"{int(prediction):,}")
-
-with tab2:
-    st.header("Model Performance & Comparison")
-    
-    col_rf, col_mlr = st.columns(2)
-    
-    with col_rf:
-        st.subheader("Random Forest Regressor")
-        st.metric(label="R² Score", value=f"{r2:.4f}")
-        st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mae):,}")
-        st.metric(label="Mean Squared Error (MSE)", value=f"{int(mse):,}")
-        st.metric(label="Intercept", value="—")
-        
-        st.write("**Feature Importances:**")
-        feat_importance = pd.DataFrame({
-            'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
-            'Importance': model.feature_importances_
-        })
-        st.dataframe(feat_importance.set_index('Feature'))
-        
-    with col_mlr:
-        st.subheader("Multiple Linear Regression")
-        st.metric(label="R² Score", value=f"{mlr_r2:.4f}")
-        st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mlr_mae):,}")
-        st.metric(label="Mean Squared Error (MSE)", value=f"{int(mlr_mse):,}")
-        st.metric(label="Intercept", value=f"{mlr_model.intercept_:.2f}")
-        
-        st.write("**Coefficients:**")
-        coef_df = pd.DataFrame({
-            'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
-            'Coefficient': mlr_model.coef_
-        })
-        st.dataframe(coef_df.set_index('Feature'))
-        
     st.markdown("---")
-    st.subheader("Demographic Trends vs Crimes")
-    st.write("Explore how different census factors relate to total cognizable crimes across all 618 merged districts:")
-    chart_feature = st.selectbox("Select Demographic Variable to Plot:", ["Population", "Growth", "Sex-Ratio", "Literacy"])
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.scatter(merged[chart_feature], merged["Total Cog. Crime Under IPC"], alpha=0.7, color="#1f77b4")
-    ax.set_title(f"{chart_feature} vs Total Crimes Across Districts", fontsize=12)
-    ax.set_xlabel(chart_feature, fontsize=10)
-    ax.set_ylabel("Total Cog. Crime Under IPC", fontsize=10)
-    ax.grid(True, linestyle="--", alpha=0.5)
-    st.pyplot(fig)
+    if st.button("Proceed to Dashboard", type="primary"):
+        st.session_state.proceeded = True
+        st.rerun()
+else:
+    # Sidebar for inputs
+    st.sidebar.header("Inference Parameters")
+    st.sidebar.write("Input demographic values using the - / + buttons below:")
 
-with tab3:
-    st.header("Data Overview & Filter")
+    population = st.sidebar.number_input("Population", min_value=1000, max_value=15000000, value=1000000, step=50000)
+    growth = st.sidebar.number_input("Population Growth Rate (%)", min_value=-20.0, max_value=60.0, value=15.0, step=0.5)
+    sex_ratio = st.sidebar.number_input("Sex Ratio (Females per 1000 Males)", min_value=700, max_value=1200, value=940, step=5)
+    literacy = st.sidebar.number_input("Literacy Rate (%)", min_value=30.0, max_value=100.0, value=75.0, step=0.5)
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Model Selection")
+    selected_model_name = st.sidebar.selectbox("Select Prediction Model:", ["Random Forest", "Multiple Linear Regression"])
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("About the Project")
+    st.sidebar.info(
+        "This system compares a Random Forest Regression (RFR) and a Multiple Linear Regression (MLR) model "
+        "trained on 2011 India Census data and NCRB crime statistics (618 merged districts)."
+    )
     
-    # State selection dropdown
-    unique_states = sorted(merged["State"].unique())
-    selected_state = st.selectbox("Select State to Filter Data:", unique_states)
-    
-    # Filter dataset for the selected state
-    state_df = merged[merged["State"] == selected_state]
-    
-    # Calculate summary metrics for the state
-    state_population = state_df["Population"].sum()
-    state_avg_literacy = state_df["Literacy"].mean()
-    state_total_crimes = state_df["Total Cog. Crime Under IPC"].sum()
-    
-    st.subheader(f"Summary Statistics for {selected_state}")
-    col_s1, col_s2, col_s3 = st.columns(3)
-    col_s1.metric(label="Total Population", value=f"{state_population:,}")
-    col_s2.metric(label="Average Literacy Rate", value=f"{state_avg_literacy:.2f}%")
-    col_s3.metric(label="Total IPC Crimes", value=f"{int(state_total_crimes):,}")
-    
-    st.subheader("District Records in Selected State")
-    st.dataframe(state_df[["District", "Population", "Growth", "Sex-Ratio", "Literacy", "Total Cog. Crime Under IPC"]])
-    
-    # Raw previews
-    st.subheader("Raw Datasets (Top 5 rows)")
-    st.write("Census Dataset Preview:")
-    st.dataframe(census.head())
-    st.write("Crime Dataset Preview:")
-    st.dataframe(crime.head())
+    if st.sidebar.button("Back to Project Info"):
+        st.session_state.proceeded = False
+        st.rerun()
+
+    st.title("District Crime Prediction System")
+    st.write("Predict the total volume of cognizable crimes (IPC) using district census demographics.")
+
+    tab1, tab2, tab3 = st.tabs(["Predict Crimes", "Model Performance", "Data Overview"])
+
+    with tab1:
+        st.header("Predict Crimes for a District")
+        st.write("Adjust the values in the sidebar to calculate the predicted crime volume:")
+        
+        st.write("### Selected Demographic Inputs:")
+        col_v1, col_v2, col_v3, col_v4 = st.columns(4)
+        col_v1.metric("Population", f"{population:,}")
+        col_v2.metric("Growth Rate", f"{growth}%")
+        col_v3.metric("Sex Ratio", f"{sex_ratio}")
+        col_v4.metric("Literacy", f"{literacy}%")
+        
+        st.write(f"Active Prediction Model: **{selected_model_name}**")
+        if st.button("Predict"):
+            input_df = pd.DataFrame([[population, growth, sex_ratio, literacy]], 
+                                    columns=["Population", "Growth", "Sex-Ratio", "Literacy"])
+            if selected_model_name == "Random Forest":
+                prediction = model.predict(input_df)[0]
+            else:
+                prediction = mlr_model.predict(input_df)[0]
+            st.metric(label=f"Predicted Total IPC Crimes ({selected_model_name})", value=f"{int(prediction):,}")
+
+    with tab2:
+        st.header("Model Performance & Comparison")
+        
+        col_rf, col_mlr = st.columns(2)
+        
+        with col_rf:
+            st.subheader("Random Forest Regressor")
+            st.metric(label="R² Score", value=f"{r2:.4f}")
+            st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mae):,}")
+            st.metric(label="Mean Squared Error (MSE)", value=f"{int(mse):,}")
+            st.metric(label="Intercept", value="—")
+            
+            st.write("**Feature Importances:**")
+            feat_importance = pd.DataFrame({
+                'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
+                'Importance': model.feature_importances_
+            })
+            st.dataframe(feat_importance.set_index('Feature'))
+            
+        with col_mlr:
+            st.subheader("Multiple Linear Regression")
+            st.metric(label="R² Score", value=f"{mlr_r2:.4f}")
+            st.metric(label="Mean Absolute Error (MAE)", value=f"{int(mlr_mae):,}")
+            st.metric(label="Mean Squared Error (MSE)", value=f"{int(mlr_mse):,}")
+            st.metric(label="Intercept", value=f"{mlr_model.intercept_:.2f}")
+            
+            st.write("**Coefficients:**")
+            coef_df = pd.DataFrame({
+                'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
+                'Coefficient': mlr_model.coef_
+            })
+            st.dataframe(coef_df.set_index('Feature'))
+            
+        st.markdown("---")
+        st.subheader("Demographic Trends vs Crimes")
+        st.write("Explore how different census factors relate to total cognizable crimes across all 618 merged districts:")
+        chart_feature = st.selectbox("Select Demographic Variable to Plot:", ["Population", "Growth", "Sex-Ratio", "Literacy"])
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.scatter(merged[chart_feature], merged["Total Cog. Crime Under IPC"], alpha=0.7, color="#1f77b4")
+        ax.set_title(f"{chart_feature} vs Total Crimes Across Districts", fontsize=12)
+        ax.set_xlabel(chart_feature, fontsize=10)
+        ax.set_ylabel("Total Cog. Crime Under IPC", fontsize=10)
+        ax.grid(True, linestyle="--", alpha=0.5)
+        st.pyplot(fig)
+
+    with tab3:
+        st.header("Data Overview & Filter")
+        
+        # State selection dropdown
+        unique_states = sorted(merged["State"].unique())
+        selected_state = st.selectbox("Select State to Filter Data:", unique_states)
+        
+        # Filter dataset for the selected state
+        state_df = merged[merged["State"] == selected_state]
+        
+        # Calculate summary metrics for the state
+        state_population = state_df["Population"].sum()
+        state_avg_literacy = state_df["Literacy"].mean()
+        state_total_crimes = state_df["Total Cog. Crime Under IPC"].sum()
+        
+        st.subheader(f"Summary Statistics for {selected_state}")
+        col_s1, col_s2, col_s3 = st.columns(3)
+        col_s1.metric(label="Total Population", value=f"{state_population:,}")
+        col_s2.metric(label="Average Literacy Rate", value=f"{state_avg_literacy:.2f}%")
+        col_s3.metric(label="Total IPC Crimes", value=f"{int(state_total_crimes):,}")
+        
+        st.subheader("District Records in Selected State")
+        st.dataframe(state_df[["District", "Population", "Growth", "Sex-Ratio", "Literacy", "Total Cog. Crime Under IPC"]])
+        
+        # Raw previews
+        st.subheader("Raw Datasets (Top 5 rows)")
+        st.write("Census Dataset Preview:")
+        st.dataframe(census.head())
+        st.write("Crime Dataset Preview:")
+        st.dataframe(crime.head())
