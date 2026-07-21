@@ -387,7 +387,7 @@ selected_model_name = st.sidebar.selectbox("Select Prediction Model:", ["Random 
 st.sidebar.markdown("---")
 st.sidebar.subheader("About the Project")
 st.sidebar.info(
-    "This system compares a Random Forest Regressor and a Multiple Linear Regression (MLR) model "
+    "This system compares a Random Forest Regression (RFR) and a Multiple Linear Regression (MLR) model "
     "trained on 2011 India Census data and NCRB crime statistics (618 merged districts)."
 )
 
