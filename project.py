@@ -1,0 +1,385 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
+import streamlit as st
+
+# 1. Load the datasets
+census = pd.read_csv("census.csv")
+crime = pd.read_csv("NCRB_2011_Table_1.14.csv", encoding="latin1")
+
+print("===== CENSUS DATA =====")
+print(census.head())
+print("\n===== CENSUS COLUMNS =====")
+print(census.columns)
+print("\n============================\n")
+print("===== CRIME DATA =====")
+print(crime.head())
+print("\n===== CRIME COLUMNS =====")
+print(crime.columns)
+
+# Rename the state column in crime to match census
+crime.rename(columns={"States/ UTs": "State"}, inplace=True)
+
+# 2. Cleanup state names helper
+def clean_state(s):
+    if not isinstance(s, str):
+        return s
+    s = s.replace('\xa0', ' ').strip().lower().replace('&', 'and')
+    mappings = {
+        'aandn islands': 'andaman and nicobar islands',
+        'a and n islands': 'andaman and nicobar islands',
+        'dandn haveli': 'dadra and nagar haveli',
+        'd and n haveli': 'dadra and nagar haveli',
+        'delhi ut': 'delhi',
+    }
+    return mappings.get(s, s)
+
+# Dictionary to fix district name mismatches between crime & census datasets
+district_map = {
+    # West Bengal
+    ("west bengal", "24 parganas north"): "north twenty four parganas",
+    ("west bengal", "24 parganas south"): "south twenty four parganas",
+    ("west bengal", "north 24 parganas"): "north twenty four parganas",
+    ("west bengal", "south 24 parganas"): "south twenty four parganas",
+    ("west bengal", "burdwan"): "barddhaman",
+    ("west bengal", "coochbehar"): "koch bihar",
+    ("west bengal", "hooghly"): "hugli",
+    ("west bengal", "howrah"): "haora",
+    ("west bengal", "paschim midnapur"): "paschim medinipur",
+    ("west bengal", "purab midnapur"): "purba medinipur",
+    ("west bengal", "purulia"): "puruliya",
+    ("west bengal", "malda"): "maldah",
+    
+    # Gujarat
+    ("gujarat", "ahmedabad"): "ahmadabad",
+    ("gujarat", "ahwa-dang"): "the dangs",
+    ("gujarat", "dahod"): "dohad",
+    ("gujarat", "mehsana"): "mahesana",
+    ("gujarat", "kutch"): "kachchh",
+    ("gujarat", "kutch (east(g))"): "kachchh",
+    ("gujarat", "kutch (west-bhuj)"): "kachchh",
+    ("gujarat", "palanpur"): "banaskantha",
+    ("gujarat", "himatnagar"): "sabarkantha",
+    ("gujarat", "panchmahal"): "panchmahal",
+    ("gujarat", "kheda north"): "kheda",
+    
+    # Maharashtra
+    ("maharashtra", "ahmednagar"): "ahmadnagar",
+    ("maharashtra", "nasik"): "nashik",
+    ("maharashtra", "raigad"): "raigarh",
+    ("maharashtra", "beed"): "bid",
+    ("maharashtra", "buldhana"): "buldana",
+    
+    # Karnataka
+    ("karnataka", "cbpura"): "chikkaballapura",
+    ("karnataka", "chamarajnagar"): "chamarajanagar",
+    ("karnataka", "chickmagalur"): "chikmagalur",
+    ("karnataka", "dakshin kannada"): "dakshina kannada",
+    ("karnataka", "yadgiri"): "yadgir",
+    ("karnataka", "mangalore"): "dakshina kannada",
+    
+    # Bihar
+    ("bihar", "purnea"): "purnia",
+    ("bihar", "nawadah"): "nawada",
+    ("bihar", "bhabhua"): "kaimur",
+    ("bihar", "motihari"): "purbi champaran",
+    ("bihar", "bettiah"): "pashchim champaran",
+    
+    # Andhra Pradesh
+    ("andhra pradesh", "ranga reddy"): "rangareddy",
+    ("andhra pradesh", "mahaboobnagar"): "mahbubnagar",
+    ("andhra pradesh", "cuddapah"): "ysr",
+    ("andhra pradesh", "nellore"): "sri potti sriramulu nellore",
+    ("andhra pradesh", "prakasham"): "prakasam",
+    
+    # Uttar Pradesh
+    ("uttar pradesh", "badaun"): "budaun",
+    ("uttar pradesh", "chandoli"): "chandauli",
+    ("uttar pradesh", "chitrakoot dham"): "chitrakoot",
+    ("uttar pradesh", "j.p.nagar"): "jyotiba phule nagar",
+    ("uttar pradesh", "khiri"): "kheri",
+    ("uttar pradesh", "kushi nagar"): "kushinagar",
+    ("uttar pradesh", "raibareilly"): "rae bareli",
+    ("uttar pradesh", "sidharthnagar"): "siddharth nagar",
+    ("uttar pradesh", "st.ravidasnagar"): "sant ravidas nagar",
+    ("uttar pradesh", "hathras"): "mahamaya nagar",
+    ("uttar pradesh", "sant kabirnagar"): "sant kabir nagar",
+    ("uttar pradesh", "fatehgarh"): "farrukhabad",
+    ("uttar pradesh", "gautambudh nagar"): "gautam buddha nagar",
+    
+    # Tamil Nadu
+    ("tamil nadu", "kanchipuram"): "kancheepuram",
+    ("tamil nadu", "villupuram"): "viluppuram",
+    ("tamil nadu", "trichy"): "tiruchirappalli",
+    ("tamil nadu", "pudukottai"): "pudukkottai",
+    ("tamil nadu", "ramnathapuram"): "ramanathapuram",
+    ("tamil nadu", "sivagangai"): "sivaganga",
+    ("tamil nadu", "thoothugudi"): "thoothukkudi",
+    ("tamil nadu", "thirunelveli"): "tirunelveli",
+    ("tamil nadu", "nilgiris"): "the nilgiris",
+    ("tamil nadu", "thiruvannamalai"): "tiruvannamalai",
+    
+    # Kerala
+    ("kerala", "trivandrum"): "thiruvananthapuram",
+    ("kerala", "alapuzha"): "alappuzha",
+    ("kerala", "kasargod"): "kasaragod",
+    ("kerala", "wayanadu"): "wayanad",
+    
+    # Orissa
+    ("orissa", "balasore"): "baleshwar",
+    ("orissa", "nowrangpur"): "nabarangapur",
+    ("orissa", "malkangir"): "malkangiri",
+    ("orissa", "baragarh"): "bargarh",
+    ("orissa", "bolangir"): "balangir",
+    ("orissa", "sonepur"): "subarnapur",
+    ("orissa", "angul"): "anugul",
+    ("orissa", "khurda"): "khordha",
+    ("orissa", "keonjhar"): "kendujhar",
+    ("orissa", "jagatsinghpur"): "jagatsinghpur",
+    ("orissa", "deogarh"): "debagarh",
+    
+    # Delhi
+    ("delhi", "north-west"): "north west delhi",
+    ("delhi", "south-west"): "south west delhi",
+    ("delhi", "north-east"): "north east delhi",
+    ("delhi", "new delhi"): "new delhi",
+    ("delhi", "central"): "central delhi",
+    ("delhi", "east"): "east delhi",
+    ("delhi", "north"): "north delhi",
+    ("delhi", "south"): "south delhi",
+    ("delhi", "west"): "west delhi",
+    
+    # Chhattisgarh
+    ("chhattisgarh", "dantewara"): "dantewada",
+    ("chhattisgarh", "koriya"): "korea",
+    ("chhattisgarh", "bizapur"): "bijapur",
+    ("chhattisgarh", "sarguja"): "surguja",
+    ("chhattisgarh", "janjgir"): "janjgir champa",
+    ("chhattisgarh", "jagdalpur"): "bastar",
+    
+    # Jharkhand
+    ("jharkhand", "jamshedpur"): "purbi singhbhum",
+    ("jharkhand", "chaibasa"): "pashchimi singhbhum",
+    ("jharkhand", "lohardagga"): "lohardaga",
+    ("jharkhand", "saraikela"): "saraikela kharsawan",
+    ("jharkhand", "sahebganj"): "sahibganj",
+    
+    # Madhya Pradesh
+    ("madhya pradesh", "khargon"): "west nimar",
+    ("madhya pradesh", "khandwa"): "east nimar",
+    ("madhya pradesh", "ashok nagar"): "ashoknagar",
+    ("madhya pradesh", "datiya"): "datia",
+    ("madhya pradesh", "narsinghpur"): "narsimhapur",
+    ("madhya pradesh", "sihore"): "sehore",
+    ("madhya pradesh", "umariya"): "umaria",
+    ("madhya pradesh", "chhatarpur"): "chhattarpur",
+    
+    # Punjab
+    ("punjab", "bhatinda"): "bathinda",
+    ("punjab", "ferozpur"): "firozpur",
+    ("punjab", "ropar"): "rupnagar",
+    ("punjab", "sas ngr"): "mohali",
+    ("punjab", "sbs nagar"): "shahid bhagat singh nagar",
+    ("punjab", "batala"): "gurdaspur",
+    ("punjab", "khanna"): "ludhiana",
+    
+    # Uttarakhand
+    ("uttarakhand", "rudra prayag"): "rudraprayag",
+    ("uttarakhand", "udhamsingh nagar"): "udham singh nagar",
+    
+    # Haryana
+    ("haryana", "hissar"): "hisar",
+    
+    # Rajasthan
+    ("rajasthan", "jhunjhunu"): "jhunjhunun",
+    ("rajasthan", "chittorgarh"): "chittaurgarh",
+    ("rajasthan", "jalore"): "jalor",
+    
+    # Tripura
+    ("tripura", "west"): "west tripura",
+    ("tripura", "east"): "east tripura",
+    ("tripura", "south"): "south tripura",
+    ("tripura", "north"): "north tripura",
+
+    # Sikkim
+    ("sikkim", "west"): "west sikkim",
+    ("sikkim", "east"): "east sikkim",
+    ("sikkim", "south"): "south sikkim",
+    ("sikkim", "north"): "north sikkim",
+
+    # Arunachal Pradesh
+    ("arunachal pradesh", "k/kumey"): "kurung kumey",
+    ("arunachal pradesh", "kameng east"): "east kameng",
+    ("arunachal pradesh", "kameng west"): "west kameng",
+    ("arunachal pradesh", "papum pare"): "papumpare",
+    ("arunachal pradesh", "siang east"): "east siang",
+    ("arunachal pradesh", "siang upper"): "upper siang",
+    ("arunachal pradesh", "siang west"): "west siang",
+    ("arunachal pradesh", "subansiri lower"): "lower subansiri",
+    ("arunachal pradesh", "subansiri upper"): "upper subansiri",
+
+    # Meghalaya
+    ("meghalaya", "garo hills east"): "east garo hills",
+    ("meghalaya", "garo hills south"): "south garo hills",
+    ("meghalaya", "garo hills west"): "west garo hills",
+    ("meghalaya", "khasi hills east"): "east khasi hills",
+    ("meghalaya", "khasi hills west"): "west khasi hills",
+    ("meghalaya", "ri-bhoi"): "ri bhoi",
+
+    # Jammu & Kashmir
+    ("jammu and kashmir", "baramulla"): "baramula",
+    ("jammu and kashmir", "budgam"): "badgam",
+    ("jammu and kashmir", "poonch"): "punch",
+    ("jammu and kashmir", "shopian"): "shupiyan",
+
+    # Himachal Pradesh
+    ("himachal pradesh", "lahaul-spiti"): "lahul and spiti",
+
+    # Dadra & Nagar Haveli
+    ("dadra and nagar haveli", "d&n haveli"): "dadra and nagar haveli"
+}
+
+# Cleanup district names helper
+def clean_district(row):
+    d = row['District']
+    s = row['State_clean']
+    if not isinstance(d, str):
+        return d
+    d = d.replace('\xa0', ' ').strip().lower()
+    
+    # Exclude totals and railway divisions
+    if d in ['total', 'railways', 'g.r.p.', 'g.r.p', 'w.rly ahmedabad', 'w.rly vadodara', 'cid crime', 'grp']:
+        return ''
+        
+    suffixes = [
+        ' commr.', ' commr', ' rural', ' rly', ' rly.', ' g.r.p.', ' g.r.p', 
+        ' city', ' railway', ' railways', ' dist.', ' district', ' dist',
+        ' commissionerate', ' urban', ' suburban', ' city.', ' commr. ', 
+        ' dcp bbsr', ' dcp ctc', ' srp(cuttack)', ' srp(rourkela)'
+    ]
+    for suf in suffixes:
+        if d.endswith(suf) or d.startswith(suf):
+            d = d.replace(suf, '').strip()
+            
+    d = d.replace(' dcp ', '').replace(' srp ', '').replace('cp ', '').strip()
+    
+    # Return matched name from district_map if present
+    return district_map.get((s, d), d)
+
+# 3. Clean and merge
+census["State_clean"] = census["State"].apply(clean_state)
+crime["State_clean"] = crime["State"].apply(clean_state)
+census["Dist_clean"] = census.apply(clean_district, axis=1)
+crime["Dist_clean"] = crime.apply(clean_district, axis=1)
+
+# Filter out empty/unnecessary records
+crime_filtered = crime[crime["Dist_clean"] != ""]
+crime_filtered = crime_filtered[~crime_filtered["Dist_clean"].isin(["total", "total (state)", "total (ut)", "total (all-india)"])]
+
+# Sum up crime numbers for the same district (e.g. city + rural parts)
+crime_numeric = [col for col in crime_filtered.columns if col not in ["Sr. No.", "State", "District", "State_clean", "Dist_clean"]]
+crime_grouped = crime_filtered.groupby(["State_clean", "Dist_clean"])[crime_numeric].sum().reset_index()
+
+merged = pd.merge(
+    census,
+    crime_grouped,
+    left_on=["State_clean", "Dist_clean"],
+    right_on=["State_clean", "Dist_clean"],
+    how="inner"
+)
+
+print("\nMerged rows:", len(merged))
+print(merged.head())
+
+# Clean up Growth column formatting
+merged["Growth"] = merged["Growth"].str.replace("%", "", regex=False).str.strip().astype(float)
+print(merged[["Population", "Growth", "Sex-Ratio", "Literacy"]].head())
+
+# 4. Prepare features and target variables
+X = merged[["Population", "Growth", "Sex-Ratio", "Literacy"]]
+y = merged["Total Cog. Crime Under IPC"]
+
+print(X.head())
+print(y.head())
+
+# Split data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+print("Training rows:", len(X_train))
+print("Testing rows:", len(X_test))
+
+# 5. Train Random Forest model
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+print("Model trained successfully!")
+
+# Make predictions and evaluate
+predictions = model.predict(X_test)
+print("Predicted Crime Counts:")
+print(predictions[:10])
+
+print("\nActual Crime Counts:")
+print(y_test.values[:10])
+
+mae = mean_absolute_error(y_test, predictions)
+r2 = r2_score(y_test, predictions)
+
+print("\n===== MODEL PERFORMANCE =====")
+print("Mean Absolute Error (MAE):", mae)
+print("R² Score:", r2)
+
+# Print feature importances
+importance = model.feature_importances_
+print("\n===== FEATURE IMPORTANCES =====")
+for feature, value in zip(X.columns, importance):
+    print(f"{feature}: {value:.4f}")
+
+# Plot feature importances
+plt.figure(figsize=(8, 5))
+plt.bar(X.columns, importance)
+plt.title("Feature Importance")
+plt.xlabel("Features")
+plt.ylabel("Importance")
+plt.show()
+
+# Show comparison table of actual vs predicted
+comparison = pd.DataFrame({
+    "Actual": y_test.values,
+    "Predicted": predictions.astype(int)
+})
+print(comparison.head(10))
+
+# 6. Streamlit User Interface
+st.title("District Crime Prediction System")
+st.write("This application predicts the Total IPC Crimes in a district using its demographics.")
+
+st.header("Predict Crimes for a District")
+st.write("Input demographic values below to get a prediction of the total cognizable crimes:")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    population = st.number_input("Population", min_value=1000, max_value=15000000, value=500000, step=10000)
+    growth = st.number_input("Population Growth Rate (%)", min_value=-50.0, max_value=100.0, value=15.0, step=0.1)
+
+with col2:
+    sex_ratio = st.number_input("Sex Ratio (Females per 1000 Males)", min_value=500, max_value=1500, value=900, step=1)
+    literacy = st.number_input("Literacy Rate (%)", min_value=0.0, max_value=100.0, value=75.0, step=0.5)
+
+# Prediction execution on button click
+if st.button("Predict"):
+    input_df = pd.DataFrame([[population, growth, sex_ratio, literacy]], 
+                            columns=["Population", "Growth", "Sex-Ratio", "Literacy"])
+    prediction = model.predict(input_df)[0]
+    st.success(f"Predicted Total IPC Crimes: **{int(prediction)}**")
+
+# Section showing model feature importance
+st.subheader("Demographic Feature Influence")
+st.write("This bar chart displays the relative importance of each feature in the trained Random Forest model:")
+
+feat_importance = pd.DataFrame({
+    'Feature': ["Population", "Growth", "Sex-Ratio", "Literacy"],
+    'Importance': model.feature_importances_
+})
+st.bar_chart(feat_importance.set_index('Feature'))
